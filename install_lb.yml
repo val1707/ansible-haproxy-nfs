@@ -1,0 +1,55 @@
+- hosts: lb
+  become: yes
+  tasks:
+    - name: "UFW firewall allow ports"
+      ufw:
+        rule: allow
+        port: "{{ item }}"
+        proto: tcp
+      with_items:
+        - "8050"
+        - "80"
+        - "443"
+        - "2049"
+        - "2222"
+       
+
+- hosts: lb
+  become: yes
+  tasks:
+    - name: "Installing HAProxy Software"
+      package:
+        name: haproxy
+        state: present
+
+    - name: Configuring the conf file of haproxy
+      template:
+              src: "files/haproxy.cfg"
+              dest: "/etc/haproxy/haproxy.cfg"
+      notify: restart-haproxy
+
+    - name: Create directory for certificate in haproxy
+      file:
+        path: "/etc/haproxy/certs"
+        state: directory
+        owner: root
+        group: root
+        mode: '0700'
+
+    - name: Copy certificate file
+      template:
+              src: "files/gate-valentin.gotoadmins.cloud.pem"
+              dest: "/etc/haproxy/certs/gate-valentin.gotoadmins.cloud.pem"
+      notify: restart-haproxy 
+
+    - name: start the haproxy service
+      service:
+        name: haproxy
+        state: started     
+
+  handlers:
+    - name: restart-haproxy
+      service:
+        name: haproxy
+        state: restarted
+  

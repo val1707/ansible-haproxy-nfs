@@ -1,0 +1,44 @@
+- hosts: nfs_server
+  become: yes
+  
+  tasks:
+    - name: "Install NFS Utilities Software"
+      package:
+        name: nfs-kernel-server
+        state: present    
+
+    - name: Create mountable dir
+      file: path=/var/www/ state=directory mode=777 owner=nobody group=nogroup
+
+    - name: copy /etc/exports
+      template: src=files/exports.j2 dest=/etc/exports owner=root group=root
+
+    - name: restart nfs server
+      service: name=nfs-kernel-server state=restarted        
+
+    
+   
+- hosts: nfs_clients
+  become: yes
+  vars:
+    mynfs: "{{ nfs_host }}:/var/www/"
+    mountpoint: "/var/www/"
+    permission: '0777'
+    myopts: 'rw,sync'
+  
+  tasks:
+    - name: "Install NFS Utilities Software"
+      package:
+        name: nfs-common
+        state: present    
+
+    - name: Create mountable dir
+      file: path=/var/www/ state=directory mode=777 owner=nobody group=nogroup
+     
+    - name: Mount network share
+      ansible.posix.mount:
+        src: "{{ mynfs }}"
+        path: "{{ mountpoint }}"
+        fstype: nfs
+        opts: "{{ myopts }}"
+        state: mounted 
